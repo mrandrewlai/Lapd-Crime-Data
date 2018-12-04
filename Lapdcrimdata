@@ -1,0 +1,244 @@
+
+
+
+
+
+select count order by asc limit
+create table city as select * from special
+select * from limit 10
+
+mkdir la
+ls
+cd la
+pwd
+
+ls
+
+wget -O 2010.csv 'https://data.lacity.org/api/views/iy4q-t9vr/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2011.csv 'https://data.lacity.org/api/views/4tmc-7r6g/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2012.csv 'https://data.lacity.org/api/views/i7pm-cnmm/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2013.csv 'https://data.lacity.org/api/views/urhh-yf63/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2014.csv 'https://data.lacity.org/api/views/mgue-vbsx/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2015.csv 'https://data.lacity.org/api/views/tss8-455b/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2016.csv 'https://data.lacity.org/api/views/xwgr-xw5q/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2017.csv 'https://data.lacity.org/api/views/ryvm-a59m/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2018.csv 'https://data.lacity.org/api/views/nayp-w2tw/rows.csv?accessType=DOWNLOAD'
+
+wget -O la_crime.csv 'https://data.lacity.org/api/views/y8tr-7khq/rows.csv?accessType=DOWNLOAD'
+
+wget -O stops.csv 'https://data.lacity.org/api/views/ci25-wgt7/rows.csv?accessType=DOWNLOAD'
+
+ls
+
+Step 2: Upload data to HDFS 
+
+Create a directory in HDFS for crime data
+Upload crime data into HDFS
+Change permissions of files to allow write access
+
+
+hdfs dfs -mkdir la
+hdfs dfs -ls la
+hdfs dfs -put ./2010.csv ./la
+hdfs dfs -put ./2011.csv ./la
+hdfs dfs -put ./2012.csv ./la
+hdfs dfs -put ./2013.csv ./la
+hdfs dfs -put ./2014.csv ./la
+hdfs dfs -put ./2015.csv ./la
+hdfs dfs -put ./2016.csv ./la
+hdfs dfs -put ./2017.csv ./la
+hdfs dfs -put ./2018.csv ./la
+
+``````````````` hdfs dfs -put ./la_crime.csv ./la
+
+``````````````` hdfs dfs -put ./stops.csv ./la
+
+hdfs dfs -ls la
+
+hdfs dfs -chmod -R o+w la/
+hdfs dfs -ls la
+
+
+Step 3: Connect to Beeline and Analyze Data
+
+Connect to Beeline
+Create a Database
+Use created Database to analyze data
+Download new data to local computer
+
+Beeline
+!connect jdbc:hive2://cis5200-bdcsce-4.compute-608214094.oraclecloud.internal:2181,cis5200-bdcsce-2.compute-608214094.oraclecloud.internal:2181,cis5200-bdcsce-3.compute-608214094.oraclecloud.internal:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2?tez.queue.name=interactive bdcsce_admin
+
+
+
+
+
+CREATE DATABASE achan97;
+Use achan97;
+Show tables;
+
+
+
+
+CREATE EXTERNAL table calls
+(Incident_Number string,
+Reporting_District string,
+Area_Occurred string,
+Dispatch_Date string,
+Dispatch_Time string,
+Call_Type_Code string,
+Call_Type_Description string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/achan97/la/table/calls';
+
+
+			
+
+
+Show tables;
+
+
+Describe calls;
+
+load data inpath '/user/achan97/la/2010.csv' into table calls;
+load data inpath '/user/achan97/la/2011.csv' into table calls;
+load data inpath '/user/achan97/la/2012.csv' into table calls;
+load data inpath '/user/achan97/la/2013.csv' into table calls;
+load data inpath '/user/achan97/la/2014.csv' into table calls;
+load data inpath '/user/achan97/la/2015.csv' into table calls;
+load data inpath '/user/achan97/la/2016.csv' into table calls;
+load data inpath '/user/achan97/la/2017.csv' into table calls;
+
+
+Hdfs dfs -ls la/table/calls/
+
+
+SELECT * FROM calls LIMIT 10;
+
+
+
+
+
+
+
+
+CREATE EXTERNAL table calls2018
+(Incident_Number string,
+Area_Occurred string,
+Reporting_District string,
+Dispatch_Date string,
+Dispatch_Time string,
+Call_Type_Code string,
+Call_Type_Description string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/achan97/la/table/calls2018'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+Describe calls;
+
+Show tables; 
+
+
+load data inpath '/user/achan97/la/2018.csv' into table calls;
+
+
+hdfs dfs -ls la/table/calls2018
+
+
+Select * from calls2018 LIMIT 10;
+
+
+
+
+
+SELECT COUNT(Incident_Number) AS total_incidents FROM calls;
+SELECT COUNT(Incident_Number) AS total_incidents FROM calls2018;
+
+
+Select area_occurred,sum(total) as total_incidents from 
+(select area_occurred,COUNT(incident_number) as total 
+from calls 
+GROUP BY area_occurred
+union all 
+select area_occurred,COUNT(incident_number) as total 
+from calls2018
+GROUP BY area_occurred)
+as count
+Group by area_occurred
+ORDER BY total_incidents
+DESC
+LIMIT 3;
+
+
+Create table newcalls
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+As
+Select * from calls
+Where incident_number != 'Incident_Number';
+
+Select count(incident_number) from newcalls 
+Where incident_number = 'Incident_Number';
+
+
+INSERT INTO table newcalls
+select Incident_Number,Reporting_District,Area_Occurred,Dispatch_Date,Dispatch_Time,Call_Type_Code,Call_Type_Description 
+From calls2018;
+
+
+
+
+
+Select * from newcalls
+Where Dispatch_Date like '%2018' limit 5;
+
+
+
+
+
+
+
+CREATE table 77th_street
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION  '/user/achan97/la/77th_street'
+AS
+SELECT * FROM newcalls
+where area_occurred == '77th Street';
+
+
+
+
+
+
+Show tables;
+
+SELECT * FROM 77th_street LIMIT 10;
+
+
+
+
+
+cd /home/achan97
+hdfs dfs -get la/77th_street
+ls
+
+
+cd 77th_street
+ls
+
+
+cat * > 77th_street.csv
+
+
+
+/home/achan97/77th_street/77th_street.csv
+
+open 129.150.128.177
