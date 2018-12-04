@@ -1,0 +1,250 @@
+mkdir la
+ls
+cd la
+pwd
+
+
+
+ls
+
+
+
+wget -O 2010.csv 'https://data.lacity.org/api/views/iy4q-t9vr/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2011.csv 'https://data.lacity.org/api/views/4tmc-7r6g/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2012.csv 'https://data.lacity.org/api/views/i7pm-cnmm/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2013.csv 'https://data.lacity.org/api/views/urhh-yf63/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2014.csv 'https://data.lacity.org/api/views/mgue-vbsx/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2015.csv 'https://data.lacity.org/api/views/tss8-455b/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2016.csv 'https://data.lacity.org/api/views/xwgr-xw5q/rows.csv?accessType=DOWNLOAD'
+
+wget -O districts.kml 'https://opendata.arcgis.com/datasets/4398360b1a0242b78904f46b3786ae73_0.kml'
+
+wget -O 2017.csv 'https://data.lacity.org/api/views/ryvm-a59m/rows.csv?accessType=DOWNLOAD'
+
+wget -O 2018.csv 'https://data.lacity.org/api/views/nayp-w2tw/rows.csv?accessType=DOWNLOAD'
+
+
+ls
+
+
+
+hdfs dfs -mkdir la
+hdfs dfs -ls la
+hdfs dfs -put ./2010.csv ./la
+hdfs dfs -put ./2011.csv ./la
+hdfs dfs -put ./2012.csv ./la
+hdfs dfs -put ./2013.csv ./la
+hdfs dfs -put ./2014.csv ./la
+hdfs dfs -put ./2015.csv ./la
+hdfs dfs -put ./2016.csv ./la
+hdfs dfs -put ./2017.csv ./la
+hdfs dfs -put ./2018.csv ./la
+
+
+hdfs dfs -ls la
+
+hdfs dfs -chmod -R o+w la/
+
+hdfs dfs -ls la
+
+
+
+
+Beeline
+!connect jdbc:hive2://cis5200-bdcsce-4.compute-608214094.oraclecloud.internal:2181,cis5200-bdcsce-2.compute-608214094.oraclecloud.internal:2181,cis5200-bdcsce-3.compute-608214094.oraclecloud.internal:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2?tez.queue.name=interactive bdcsce_admin
+
+
+
+
+CREATE DATABASE achan97;
+Use achan97;
+Show tables;
+
+
+
+
+CREATE EXTERNAL table calls
+(Incident_Number string,
+Reporting_District string,
+Area_Occurred string,
+Dispatch_Date string,
+Dispatch_Time string,
+Call_Type_Code string,
+Call_Type_Description string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/achan97/la/table/calls';
+
+
+			
+
+
+Show tables;
+
+
+Describe calls;
+
+LOAD DATA INPATH '/user/achan97/la/2010.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2011.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2012.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2013.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2014.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2015.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2016.csv' INTO table calls;
+LOAD DATA INPATH '/user/achan97/la/2017.csv' INTO table calls;
+
+
+hdfs dfs -ls la/table/calls/
+
+
+SELECT * FROM calls LIMIT 10;
+
+
+
+
+
+
+
+CREATE EXTERNAL table calls2018
+(Incident_Number string,
+Area_Occurred string,
+Reporting_District string,
+Dispatch_Date string,
+Dispatch_Time string,
+Call_Type_Code string,
+Call_Type_Description string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/achan97/la/table/calls2018'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+Show tables; 
+
+Describe calls2018;
+
+
+
+
+LOAD DATA INPATH '/user/achan97/la/2018.csv' INTO table calls2018;
+
+
+hdfs dfs -ls la/table/calls2018
+
+
+SELECT * FROM calls2018 LIMIT 10;
+
+
+
+
+
+SELECT COUNT(Incident_Number) AS total_incidents FROM calls;
+
+SELECT COUNT(Incident_Number) AS total_incidents FROM calls2018;
+
+
+
+
+SELECT area_occurred,SUM(total) AS total_incidents
+FROM 
+(SELECT area_occurred,COUNT(incident_number) AS total 
+FROM calls 
+GROUP BY area_occurred
+UNION ALL
+SELECT area_occurred,COUNT(incident_number) AS total 
+CALLS calls2018
+GROUP BY area_occurred)
+AS count
+GROUP BY area_occurred
+ORDER BY total_incidents
+DESC
+LIMIT 3;
+
+
+CREATE table newcalls
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+AS
+SELECT * FROM calls
+WHERE incident_number != 'Incident_Number';
+
+
+SELECT COUNT(incident_number) FROM newcalls 
+Where incident_number = 'Incident_Number';
+
+
+Show tables; 
+
+
+Describe newcalls;
+
+
+INSERT INTO table newcalls
+SELECT Incident_Number,Reporting_District,Area_Occurred,Dispatch_Date,Dispatch_Time,Call_Type_Code,Call_Type_Description 
+FROM calls2018;
+
+
+
+
+
+SELECT * FROM newcalls
+WHERE Dispatch_Date like '%2018' limit 10;
+
+
+
+
+
+
+CREATE table 77th_street
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION  '/user/achan97/la/77th_street'
+AS
+SELECT * FROM newcalls
+WHERE area_occurred == '77th Street';
+
+
+
+
+Show tables;
+
+Describe 77th_street;
+
+SELECT * FROM 77th_street LIMIT 10;
+
+SELECT Call_Type_Description,COUNT(Call_Type_Description) AS times
+FROM 77th_street
+GROUP BY Call_Type_Description
+ORDER BY times
+DESC
+LIMIT 10;
+
+
+
+
+
+cd /home/achan97
+hdfs dfs -get la/77th_street
+ls
+
+
+
+cat * > 77th_street.csv
+
+
+
+
+
+open 129.150.128.177
+
+ls
+
+cd /home/achan97/77th_street
+
+get 77th_street.csv
+
+cd /home/achan97/la
+
+get districts.kml
